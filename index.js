@@ -11,12 +11,15 @@ const arrow = document.getElementById("arrow");
 const arrowDot = document.getElementById("arrowDot");
 const hole = document.getElementById("hole");
 const userHits = document.getElementById("userHits");
+const gameEnd = document.getElementById("gameEnd");
+gameEnd.style.display = "none";
 let mainBallPositionX;
 let mainBallPositionY;
 let mainBallMomentum = 0;
 let mainBallMomentumDirection = 0;
 let holepos = [0,0];
 let hits = 0
+let frictionC = 0.95;
 var walls = []
 mainBallMomentumDirection%=360;
 
@@ -33,23 +36,34 @@ const levels = [
     {
         "ball":[200,500],
         "hole":[600,100],
-        "walls":[[100,0,50,600],[700,50,50,500],[156,550,594,50],[100,0,650,50]]
+        "walls":[[100,0,50,600],[700,50,50,500],[156,550,594,50],[100,0,650,50]],
+        "portalPairs":[]
     },
     {
         "ball":[200,90],
         "hole":[1035,500],
-        "walls":[[100,0,50,200],[1100,50,50,550],[156,150,800,50],[100,0,1050,50],[956,150,50,470],[1012,570,138,50]]
+        "walls":[[100,0,50,200],[1100,50,50,550],[156,150,800,50],[100,0,1050,50],[956,150,50,470],[1012,570,138,50]],
+        "portalPairs":[]
     },
     {
         "ball":[1000,500],
         "hole":[200,100],
-        "walls":[[100,0,50,600],[700,50,50,400],[1200,50,50,550],[850,150,50,400],[156,550,1092,50],[100,0,1150,50]]
+        "walls":[[100,0,50,600],[700,50,50,400],[1200,50,50,550],[850,150,50,400],[156,550,1092,50],[100,0,1150,50]],
+        "portalPairs":[]
     },
     {
-        "ball":[500,500],
+        "ball":[200,500],
         "hole":[600,100],
-        "walls":[]
+        "walls":[[100,0,50,600],[700,50,50,500],[156,550,594,50],[100,0,650,50], [250,250,50,350], [250,250,350,50], [450,150,50,50], [350,350,50,50]],
+        "portalPairs":[]
+    },
+    {
+        "ball":[200,500],
+        "hole":[600,100],
+        "walls":[[500,0,50,600],[100,0,50,600],[700,50,50,500],[156,550,594,50],[100,0,650,50]],
+        "portalPairs":[[250, 250, 630, 400]]
     }
+    
 ]
 
 function detectMouseDrag(event) {
@@ -130,6 +144,16 @@ function changeMainBallPos(){
             }
         }
 
+        for(let i = 0; i < portalPairs.length; i++){
+            portal = portalPairs[i]
+            let portalDist = Math.hypot(mainBallPositionX-portal[0],mainBallPositionY-portal[1])
+            if(portalDist<30){
+                console.log(mainBallPositionX)
+                mainBallPositionX = portal[2];
+                mainBallPositionY = portal[3];
+            }
+        }
+
         let holeDist = Math.hypot(mainBallPositionX-holepos[0],mainBallPositionY-holepos[1])
         if(holeDist<20){
             changeX = changeY = 0;
@@ -137,9 +161,16 @@ function changeMainBallPos(){
             currentLevel++
         }
 
+        let portalDist = Math.hypot(mainBallPositionX-holepos[0],mainBallPositionY-holepos[1])
+        if(portalDist<20){
+            changeX = changeY = 0;
+            loadLevel(levels[currentLevel]);
+            currentLevel++
+        }
+
         mainBallPositionX += changeX;
         mainBallPositionY += changeY;
-        mainBallMomentum=mainBallMomentum*0.97;
+        mainBallMomentum=mainBallMomentum*frictionC;
 
     } else {
 
@@ -201,35 +232,69 @@ function createHitboxes(levelElements){
 }
 
 function loadLevel(level){
-    mainBallMomentum = 0;
-    hits = 0
-    userHits.innerHTML = `HITS: ${hits}`
-    mainBallPositionX = level["ball"][0];
-    mainBallPositionY = level["ball"][1];
-    holepos = [level["hole"][0], level["hole"][1]];
-    hole.style.marginLeft = level["hole"][0]+"px";
-    hole.style.marginTop = level["hole"][1]+"px";
+    if(level){
+        mainBallMomentum = 0;
+        hits = 0
+        userHits.innerHTML = `HITS: ${hits}`
+        mainBallPositionX = level["ball"][0];
+        mainBallPositionY = level["ball"][1];
+        holepos = [level["hole"][0], level["hole"][1]];
+        hole.style.marginLeft = level["hole"][0]+"px";
+        hole.style.marginTop = level["hole"][1]+"px";
 
-    walls.forEach(function(wall){
-        wall.remove();
-    })
-    walls = [];
+        walls.forEach(function(wall){
+            wall.remove();
+        })
+        walls = [];
 
-    for (let i = 0; i < level["walls"].length; i++){
-        let wallData = level["walls"][i];
-        let wall = document.createElement("div");
-        wall.classList.add("wall");
-        console.log(wallData);
-        wall.style.marginLeft = `${wallData[0]}px`;
-        wall.style.marginTop = `${wallData[1]}px`;
-        wall.style.width = `${wallData[2]}px`;
-        wall.style.height = `${wallData[3]}px`;
-        mainArea.appendChild(wall);
+        for (let i = 0; i < level["walls"].length; i++){
+            let wallData = level["walls"][i];
+            let wall = document.createElement("div");
+            wall.classList.add("wall");
+            console.log(wallData);
+            wall.style.marginLeft = `${wallData[0]}px`;
+            wall.style.marginTop = `${wallData[1]}px`;
+            wall.style.width = `${wallData[2]}px`;
+            wall.style.height = `${wallData[3]}px`;
+            mainArea.appendChild(wall);
 
-        walls.push(wall);
+            walls.push(wall);
+        }
+
+        collisionLines = createHitboxes(walls);
+
+        portalPairs = level["portalPairs"]
+        for (let i = 0; i < portalPairs.length; i++){
+            let portalA = document.createElement("div");
+            let portalB = document.createElement("div");
+
+            portalA.style.marginLeft = `${portalPairs[i][0]}px`;
+            portalA.style.marginTop = `${portalPairs[i][1]}px`;
+            portalA.classList.add("portal")
+            portalB.style.marginLeft = `${portalPairs[i][2]}px`;
+            portalB.style.marginTop = `${portalPairs[i][3]}px`;
+            portalB.classList.add("portal")
+
+            mainArea.appendChild(portalA);
+            mainArea.appendChild(portalB);
+        }
+    } else {
+        mainBall.style.display = 'none';
+        gameEnd.style.display = "block";
     }
+}
 
-    collisionLines = createHitboxes(walls);
+function touches(div1, div2) {
+    var rect1 = div1.getBoundingClientRect();
+    var rect2 = div2.getBoundingClientRect();
+  
+    if (rect1.bottom == rect2.top) {
+        return true;
+    }
+  }
+
+function resetLvl(){
+    loadLevel(levels[currentLevel-1])
 }
 
 loadLevel(levels[currentLevel]);
