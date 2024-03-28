@@ -41,7 +41,7 @@ body, html{
     height: 50px;
     background: blue;
     transform: translate(-25px, -25px); 
-    background: url("https://esoc.esa.int/sites/default/themes/ops_theme/img/innovation_artificial_intelligence_dissemination/esoc_3.2.4_aioi_dissemination_2.png");
+    background: url("portal.png");
     background-size: 50px;
 }
 
